@@ -57,7 +57,11 @@ INJECTION_SCRIPT = r"""
         document.head.appendChild(style);
     }
 
-    style.textContent = `
+    // فقط اگر CSS هنوز نوشته نشده بنویس (جلوگیری از reflow هر 5 ثانیه)
+    // ولی element scan را همیشه انجام بده
+    if (!style.dataset.written) {
+        style.dataset.written = '1';
+        style.textContent = `
         /* ── متن فارسی: راست‌چین + وزیرمتن ── */
         .persian-rtl-block {
             direction: rtl !important;
@@ -105,6 +109,7 @@ INJECTION_SCRIPT = r"""
             margin: 0 4px !important;
         }
     `;
+    } // end if (!style.dataset.written)
 
     // ─── 3. Regex پایه ────────────────────────────────────────────────────────
     const PERSIAN = /[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
@@ -264,7 +269,7 @@ INJECTION_SCRIPT = r"""
         );
     }
 
-    return { status: 'OK', version: '2.1.0' };
+    return { status: 'OK', version: '2.2.0' };
 })()
 """
 
@@ -386,8 +391,8 @@ def main():
         help="حذف از Startup ویندوز"
     )
     parser.add_argument(
-        "--interval",  type=float, default=5.0,
-        help="فاصله زمانی بین هر inject به ثانیه (پیش‌فرض: 5.0)"
+        "--interval",  type=float, default=3.0,
+        help="فاصله زمانی بین هر inject به ثانیه (پیش‌فرض: 3.0)"
     )
     args = parser.parse_args()
 
