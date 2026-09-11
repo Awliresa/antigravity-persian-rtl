@@ -202,19 +202,48 @@ INJECTION_SCRIPT = r"""
         '[role="combobox"], [contenteditable="true"]'
     ).forEach(processElement);
 
-    // کدها را دوباره مطمئن شو LTR هستند
     document.querySelectorAll('pre, code').forEach(applyLtr);
 
-    // ─── 8. Real-time: input listener ────────────────────────────────────────
-    document.addEventListener('input',  e => processElement(e.target), true);
-    document.addEventListener('keyup',  e => processElement(e.target), true);
+    // ─── 8. Debounced input listener (فقط یک‌بار register می‌شود) ────────────
+    // بدون debounce، هر keystroke یک reflow می‌زند و تایپ را کند می‌کند.
+    // با debounce 400ms، فقط بعد از توقف تایپ پردازش انجام می‌شود.
+    if (!window.__ag_input_listener_registered) {
+        window.__ag_input_listener_registered = true;
 
-    // ─── 9. MutationObserver: پیام‌های streaming AI ──────────────────────────
+        let _inputTimer = null;
+        document.addEventListener('input', e => {
+            const target = e.target;
+            // فقط برای input boxes پردازش real-time انجام می‌شود
+            if (!target || !(target.isContentEditable || target.getAttribute('role') === 'combobox' || target.tagName === 'TEXTAREA')) return;
+            clearTimeout(_inputTimer);
+            _inputTimer = setTimeout(() => processElement(target), 400);
+        }, true);
+
+        // keyup فقط برای Enter (submit) — بلافاصله
+        document.addEventListener('keyup', e => {
+            if (e.key === 'Enter' && e.target) {
+                processElement(e.target);
+            }
+        }, true);
+    }
+
+    // ─── 9. MutationObserver: پیام‌های AI (فقط برای nodes جدید) ─────────────
+    // characterData حذف شد — آن باعث trigger بر هر کاراکتر می‌شد.
     if (!window.__ag_vazir_observer) {
+        let _mutationTimer = null;
+        const _pendingNodes = new Set();
+
         window.__ag_vazir_observer = new MutationObserver(mutations => {
             for (const m of mutations) {
                 for (const n of m.addedNodes) {
                     if (n.nodeType !== 1) continue;
+                    _pendingNodes.add(n);
+                }
+            }
+            // batch پردازش بعد از 100ms (نه بلافاصله)
+            clearTimeout(_mutationTimer);
+            _mutationTimer = setTimeout(() => {
+                for (const n of _pendingNodes) {
                     processElement(n);
                     if (n.querySelectorAll) {
                         n.querySelectorAll(
@@ -224,16 +253,14 @@ INJECTION_SCRIPT = r"""
                         n.querySelectorAll('pre, code').forEach(applyLtr);
                     }
                 }
-                // اگر محتوای یک element تغییر کرد (streaming text)
-                if (m.type === 'characterData' && m.target.parentElement) {
-                    processElement(m.target.parentElement);
-                }
-            }
+                _pendingNodes.clear();
+            }, 100);
         });
 
         window.__ag_vazir_observer.observe(
             document.body || document.documentElement,
-            { childList: true, subtree: true, characterData: true }
+            { childList: true, subtree: true }
+            // characterData: true حذف شد
         );
     }
 
@@ -359,8 +386,8 @@ def main():
         help="حذف از Startup ویندوز"
     )
     parser.add_argument(
-        "--interval",  type=float, default=2.0,
-        help="فاصله زمانی بین هر inject به ثانیه (پیش‌فرض: 2.0)"
+        "--interval",  type=float, default=5.0,
+        help="فاصله زمانی بین هر inject به ثانیه (پیش‌فرض: 5.0)"
     )
     args = parser.parse_args()
 
