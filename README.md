@@ -79,8 +79,6 @@ antigravity-persian-rtl/
 │   ├── hotkey_service.py           ← کلید میانبر Win32
 │   ├── clipboard_helper.py         ← مدیریت کلیپ‌بورد
 │   └── cli.py                      ← رابط خط فرمان
-├── tests/
-│   └── test_engine.py
 ├── install.bat                     ← نصب در Startup ویندوز
 ├── uninstall.bat
 ├── run_daemon.bat                  ← اجرای مستقیم daemon
@@ -220,15 +218,6 @@ antigravity-persian-rtl/
 ├── uninstall.bat                   — Remove from Startup
 ├── run_daemon.bat                  — Launch daemon directly (background)
 └── run_clipboard_tool.bat          — Launch clipboard GUI
-```
-
-## Running Tests
-
-```bash
-cd tests
-python -m pytest test_engine.py -v
-# or
-python test_engine.py
 ```
 
 </details>
